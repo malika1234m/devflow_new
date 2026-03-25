@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useOptimistic } from "react";
+import { useState, useTransition } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -15,6 +15,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { TaskCard, TaskCardData } from "./task-card";
 import { CreateTaskModal } from "./create-task-modal";
+import { TaskDetailDrawer } from "./task-detail-drawer";
 import { updateTaskStatus } from "@/lib/actions/task";
 import { cn } from "@/lib/utils";
 
@@ -39,15 +40,17 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ initialTasks, projectId, workspaceId, members }: KanbanBoardProps) {
-  const [tasks, setOptimisticTasks] = useOptimistic(initialTasks);
+  const [tasks, setTasks] = useState(initialTasks);
   const [activeTask, setActiveTask] = useState<TaskCardData | null>(null);
   const [createModalStatus, setCreateModalStatus] = useState<Status | null>(null);
-  const [selectedTask, setSelectedTask] = useState<TaskCardData | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) ?? null : null;
 
   function getTasksByStatus(status: Status) {
     return tasks.filter((t) => t.status === status);
@@ -65,19 +68,17 @@ export function KanbanBoard({ initialTasks, projectId, workspaceId, members }: K
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // over a column header
     const overColumn = COLUMNS.find((c) => c.id === overId);
     if (overColumn) {
-      setOptimisticTasks((prev) =>
+      setTasks((prev) =>
         prev.map((t) => (t.id === activeId ? { ...t, status: overColumn.id } : t))
       );
       return;
     }
 
-    // over another task
     const overTask = tasks.find((t) => t.id === overId);
     if (overTask && overTask.status !== tasks.find((t) => t.id === activeId)?.status) {
-      setOptimisticTasks((prev) =>
+      setTasks((prev) =>
         prev.map((t) => (t.id === activeId ? { ...t, status: overTask.status } : t))
       );
     }
@@ -102,6 +103,17 @@ export function KanbanBoard({ initialTasks, projectId, workspaceId, members }: K
     }
   }
 
+  function handleTaskUpdate(updates: Partial<TaskCardData> & { id: string }) {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updates.id ? { ...t, ...updates } : t))
+    );
+  }
+
+  function handleTaskDelete(taskId: string) {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setSelectedTaskId(null);
+  }
+
   return (
     <>
       <DndContext
@@ -120,7 +132,7 @@ export function KanbanBoard({ initialTasks, projectId, workspaceId, members }: K
                 column={col}
                 tasks={colTasks}
                 onAddTask={() => setCreateModalStatus(col.id)}
-                onTaskClick={setSelectedTask}
+                onTaskClick={(task) => setSelectedTaskId(task.id)}
               />
             );
           })}
@@ -149,8 +161,14 @@ export function KanbanBoard({ initialTasks, projectId, workspaceId, members }: K
       {/* Task detail drawer */}
       {selectedTask && (
         <TaskDetailDrawer
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
+          taskId={selectedTask.id}
+          initialTask={selectedTask}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          members={members}
+          onClose={() => setSelectedTaskId(null)}
+          onTaskUpdate={handleTaskUpdate}
+          onTaskDelete={handleTaskDelete}
         />
       )}
     </>
@@ -198,10 +216,7 @@ function KanbanColumn({ column, tasks, onAddTask, onTaskClick }: ColumnProps) {
         items={tasks.map((t) => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div
-          id={column.id}
-          className="flex flex-1 flex-col gap-2 min-h-[200px]"
-        >
+        <div id={column.id} className="flex flex-1 flex-col gap-2 min-h-[200px]">
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} onClick={onTaskClick} />
           ))}
@@ -225,94 +240,10 @@ function KanbanColumn({ column, tasks, onAddTask, onTaskClick }: ColumnProps) {
   );
 }
 
-// ─── Task detail drawer ───────────────────────────────────────────────────────
-
-function TaskDetailDrawer({ task, onClose }: { task: TaskCardData; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="font-semibold text-gray-900">Task details</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100">
-            <XIcon />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
-            {task.description && (
-              <p className="mt-2 text-sm text-gray-600">{task.description}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <DetailItem label="Status">
-              <span className="text-sm font-medium text-gray-900">
-                {task.status.replace(/_/g, " ")}
-              </span>
-            </DetailItem>
-            <DetailItem label="Priority">
-              <span className="text-sm font-medium text-gray-900">{task.priority}</span>
-            </DetailItem>
-            {task.dueDate && (
-              <DetailItem label="Due date">
-                <span className="text-sm text-gray-900">
-                  {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </span>
-              </DetailItem>
-            )}
-            {task.assignee && (
-              <DetailItem label="Assignee">
-                <div className="flex items-center gap-2">
-                  {task.assignee.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={task.assignee.image} alt="" className="h-5 w-5 rounded-full" />
-                  ) : (
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
-                      {task.assignee.name?.slice(0, 1)}
-                    </div>
-                  )}
-                  <span className="text-sm text-gray-900">{task.assignee.name}</span>
-                </div>
-              </DetailItem>
-            )}
-          </div>
-
-          <div className="rounded-lg bg-indigo-50 p-4 text-sm text-indigo-700">
-            <p className="font-medium">AI Summary</p>
-            <p className="mt-1 text-indigo-600">
-              Coming in Step 6 — click &quot;Summarize&quot; to get an AI-generated status summary.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DetailItem({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</p>
-      <div className="mt-1">{children}</div>
-    </div>
-  );
-}
-
 function PlusIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   );
 }

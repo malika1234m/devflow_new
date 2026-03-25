@@ -3,6 +3,37 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { taskId } = await params;
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: {
+      assignee: { select: { id: true, name: true, image: true } },
+      creator: { select: { id: true, name: true, image: true } },
+      comments: {
+        include: { user: { select: { id: true, name: true, image: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      aiSummary: true,
+      _count: { select: { comments: true } },
+    },
+  });
+
+  if (!task) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(task);
+}
+
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
