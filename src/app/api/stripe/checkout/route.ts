@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     payment_method_types: ["card"],
     line_items: [{ price: PLANS.PRO.priceId, quantity: 1 }],
     success_url: `${process.env.NEXTAUTH_URL}/dashboard?upgraded=true`,
-    cancel_url: `${process.env.NEXTAUTH_URL}/settings/billing`,
+    cancel_url: `${process.env.NEXTAUTH_URL}/workspace/${workspaceId}/billing`,
     metadata: { workspaceId },
   });
 
