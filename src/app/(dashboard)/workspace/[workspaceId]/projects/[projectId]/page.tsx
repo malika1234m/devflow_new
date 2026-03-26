@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { StatusBadge } from "@/components/ui/badge";
+import { ProjectReportButton } from "@/components/ai/project-report-button";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
@@ -76,8 +77,9 @@ export default async function ProjectPage({ params }: Props) {
             )}
           </div>
 
-          <div className="flex items-center gap-3 text-sm text-gray-500">
-            <span>Created {formatDate(project.createdAt)}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">Created {formatDate(project.createdAt)}</span>
+            <ProjectReportButton projectId={projectId} projectName={project.name} />
           </div>
         </div>
 
