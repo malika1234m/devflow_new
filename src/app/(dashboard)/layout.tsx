@@ -1,8 +1,10 @@
-import { auth, signOut } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getInitials } from "@/lib/utils";
+import { AppShell } from "@/components/layout/app-shell";
+import { SignOutButton } from "@/components/layout/sign-out-button";
 
 export default async function DashboardLayout({
   children,
@@ -19,113 +21,100 @@ export default async function DashboardLayout({
     take: 8,
   });
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-gray-200 bg-white">
-        {/* Logo */}
-        <div className="flex h-16 items-center border-b border-gray-100 px-6">
-          <Link href="/dashboard" className="text-lg font-bold text-indigo-600">
-            DevFlow
-          </Link>
-        </div>
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      {/* Logo */}
+      <div className="flex h-16 items-center border-b border-gray-100 px-6">
+        <Link href="/dashboard" className="text-lg font-bold text-indigo-600">
+          DevFlow
+        </Link>
+      </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Main nav */}
-          <nav className="space-y-1 p-3">
-            <NavLink href="/dashboard">
-              <HomeIcon /> Dashboard
-            </NavLink>
-          </nav>
+      <div className="flex-1 overflow-y-auto">
+        {/* Main nav */}
+        <nav className="space-y-1 p-3">
+          <NavLink href="/dashboard">
+            <HomeIcon /> Dashboard
+          </NavLink>
+        </nav>
 
-          {/* Workspaces */}
-          <div className="px-3 pb-3">
-            <div className="mb-1 flex items-center justify-between px-2 py-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Workspaces
-              </span>
-              <Link
-                href="/workspace/new"
-                className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                title="New workspace"
-              >
-                <PlusIcon />
-              </Link>
-            </div>
-
-            {workspaces.length === 0 ? (
-              <Link
-                href="/workspace/new"
-                className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-gray-500 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-              >
-                <PlusIcon /> Create workspace
-              </Link>
-            ) : (
-              <div className="space-y-0.5">
-                {workspaces.map((ws) => (
-                  <Link
-                    key={ws.id}
-                    href={`/workspace/${ws.id}`}
-                    className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-                  >
-                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-indigo-100 text-xs font-bold text-indigo-700">
-                      {ws.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <span className="truncate">{ws.name}</span>
-                    {ws.plan === "PRO" && (
-                      <span className="ml-auto text-xs font-medium text-indigo-500">Pro</span>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
+        {/* Workspaces */}
+        <div className="px-3 pb-3">
+          <div className="mb-1 flex items-center justify-between px-2 py-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Workspaces
+            </span>
+            <Link
+              href="/workspace/new"
+              className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              title="New workspace"
+            >
+              <PlusIcon />
+            </Link>
           </div>
 
-          {/* Bottom nav */}
-          <nav className="space-y-1 border-t border-gray-100 p-3">
-            <NavLink href="/settings">
-              <SettingsIcon /> Settings
-            </NavLink>
-          </nav>
-        </div>
-
-        {/* User */}
-        <div className="border-t border-gray-100 p-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            {session.user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={session.user.image}
-                alt={session.user.name ?? ""}
-                className="h-8 w-8 rounded-full"
-              />
-            ) : (
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
-                {getInitials(session.user.name ?? "U")}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900">{session.user.name}</p>
-              <p className="truncate text-xs text-gray-500">{session.user.email}</p>
+          {workspaces.length === 0 ? (
+            <Link
+              href="/workspace/new"
+              className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-gray-500 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+            >
+              <PlusIcon /> Create workspace
+            </Link>
+          ) : (
+            <div className="space-y-0.5">
+              {workspaces.map((ws) => (
+                <Link
+                  key={ws.id}
+                  href={`/workspace/${ws.id}`}
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                >
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-indigo-100 text-xs font-bold text-indigo-700">
+                    {ws.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="truncate">{ws.name}</span>
+                  {ws.plan === "PRO" && (
+                    <span className="ml-auto text-xs font-medium text-indigo-500">Pro</span>
+                  )}
+                </Link>
+              ))}
             </div>
-          </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/" });
-            }}
-          >
-            <button className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-              Sign out
-            </button>
-          </form>
+          )}
         </div>
-      </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">{children}</main>
+        {/* Bottom nav */}
+        <nav className="space-y-1 border-t border-gray-100 p-3">
+          <NavLink href="/settings">
+            <SettingsIcon /> Settings
+          </NavLink>
+        </nav>
+      </div>
+
+      {/* User */}
+      <div className="border-t border-gray-100 p-3">
+        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+          {session.user.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={session.user.image}
+              alt={session.user.name ?? ""}
+              className="h-8 w-8 rounded-full"
+            />
+          ) : (
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+              {getInitials(session.user.name ?? "U")}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-gray-900">{session.user.name}</p>
+            <p className="truncate text-xs text-gray-500">{session.user.email}</p>
+          </div>
+        </div>
+        <SignOutButton />
+      </div>
     </div>
   );
+
+  return <AppShell sidebar={sidebar}>{children}</AppShell>;
 }
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {

@@ -4,9 +4,15 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  const { upgraded } = await searchParams;
 
   const workspaces = await db.workspace.findMany({
     where: { members: { some: { userId: session.user.id } } },
@@ -30,6 +36,16 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-8">
+      {upgraded === "true" && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+          <span className="text-xl">🎉</span>
+          <div>
+            <p className="font-semibold text-green-800">You&apos;re now on Pro!</p>
+            <p className="text-sm text-green-700">Unlimited projects, unlimited members, and advanced AI reports are now unlocked.</p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome back, {session.user.name?.split(" ")[0]}
